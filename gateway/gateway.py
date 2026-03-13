@@ -35,6 +35,12 @@ import os
 from datetime import datetime
 from collections import OrderedDict
 
+# Force unbuffered stdout so output appears immediately when piped through tee
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+except AttributeError:
+    pass  # Python < 3.7 fallback — use PYTHONUNBUFFERED=1 env var instead
+
 # ============================================================
 #  CONFIGURATION — Change these to match your setup
 # ============================================================
@@ -123,9 +129,9 @@ def print_status_dashboard():
 # ============================================================
 
 def log(message):
-    """Timestamped console log."""
+    """Timestamped console log with forced flush."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{timestamp}] {message}")
+    print(f"[{timestamp}] {message}", flush=True)
 
 
 def parse_lora_message(raw_line):
@@ -223,17 +229,27 @@ def find_serial_port():
     """
     log("🔍 Auto-detecting ESP32 serial port...")
 
-    # Scan all available serial ports
+    # List ALL available serial ports for debugging
     ports = serial.tools.list_ports.comports()
+    if not ports:
+        log("   ⚠️  No serial ports detected at all!")
+        log("   → Is the receiver ESP32 plugged into a USB port?")
+        log("   → Run: ls /dev/ttyUSB* /dev/ttyACM*")
+    else:
+        log(f"   Found {len(ports)} serial port(s):")
+        for port in ports:
+            log(f"     • {port.device} — {port.description} [{port.hwid}]")
+
+    # Scan for known ESP32 USB-Serial chips
     for port in ports:
         desc = (port.description or "").lower()
         hwid = (port.hwid or "").lower()
         # Common ESP32 USB-Serial chips: CP210x, CH340, CH9102, FTDI
         if any(chip in desc for chip in ["cp210", "ch340", "ch910", "ftdi", "usb-serial", "usbserial"]):
-            log(f"   Found: {port.device} ({port.description})")
+            log(f"   ✅ Match: {port.device} ({port.description})")
             return port.device
         if any(chip in hwid for chip in ["cp210", "ch340", "ch910", "ftdi"]):
-            log(f"   Found: {port.device} ({port.description})")
+            log(f"   ✅ Match: {port.device} ({port.description})")
             return port.device
 
     # Fallback: try common port names
@@ -246,7 +262,7 @@ def find_serial_port():
     for pattern in fallback_patterns:
         matches = glob.glob(pattern)
         if matches:
-            log(f"   Found: {matches[0]}")
+            log(f"   ✅ Fallback match: {matches[0]}")
             return matches[0]
 
     return None

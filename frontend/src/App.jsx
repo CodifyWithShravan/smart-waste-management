@@ -4,8 +4,8 @@ import DustbinCard from "./components/DustbinCard";
 import MapView from "./components/MapView";
 import axios from "axios";
 
-// Use 127.0.0.1 instead of localhost to avoid Mac network routing bugs
-const API_URL = "http://127.0.0.1:5050/api/bins";
+// Dynamically use the current hostname so the dashboard works from any device
+const API_URL = `http://${window.location.hostname}:5050/api/bins`;
 
 function App() {
 
