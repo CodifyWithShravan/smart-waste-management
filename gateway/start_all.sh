@@ -2,15 +2,15 @@
 # ============================================================
 #  Smart Waste Management — Start All Services
 # ============================================================
-#  Launches the backend, frontend dashboard, and gateway script.
-#  Run this every time you power on the Pi.
+#  Launches the backend (which serves both the API + dashboard)
+#  and the LoRa gateway script.
 #
 #  Usage:
 #    chmod +x start_all.sh
 #    ./start_all.sh
 #
-#  To stop: Press Ctrl+C (stops gateway), then all other
-#  services will also shut down automatically.
+#  To stop: Press Ctrl+C (stops gateway), then the backend
+#  will also shut down automatically.
 # ============================================================
 
 set -e
@@ -28,7 +28,6 @@ mkdir -p "$LOG_DIR"
 
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 BACKEND_LOG="$LOG_DIR/backend_$TIMESTAMP.log"
-FRONTEND_LOG="$LOG_DIR/frontend_$TIMESTAMP.log"
 GATEWAY_LOG="$LOG_DIR/gateway_$TIMESTAMP.log"
 
 # Get the Pi's LAN IP address
@@ -43,9 +42,36 @@ echo "  Starting all services..."
 echo "========================================="
 echo ""
 
-# --- Step 1: Start the Backend Server ---
+# --- Step 1: Build Frontend (if needed) ---
+echo "🌐 Checking frontend build..."
+cd "$FRONTEND_DIR"
+
+# Install dependencies if missing
+if [ ! -d "node_modules" ]; then
+    echo "   📦 Installing frontend dependencies..."
+    npm install
+fi
+
+# Build if dist doesn't exist or source is newer
+if [ ! -d "dist" ]; then
+    echo "   🔨 Building frontend dashboard..."
+    npm run build
+    echo "   ✅ Frontend built!"
+else
+    echo "   ✅ Frontend already built (run 'cd frontend && npm run build' to rebuild)"
+fi
+echo ""
+
+# --- Step 2: Start the Backend Server (serves API + Dashboard) ---
 echo "🟢 Starting Node.js backend..."
 cd "$BACKEND_DIR"
+
+# Install backend deps if missing
+if [ ! -d "node_modules" ]; then
+    echo "   📦 Installing backend dependencies..."
+    npm install
+fi
+
 node server.js > "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 echo "   PID: $BACKEND_PID"
@@ -70,36 +96,17 @@ for i in {1..10}; do
 done
 echo ""
 
-# --- Step 2: Start the Frontend Dashboard ---
-echo "🌐 Starting frontend dashboard..."
-cd "$FRONTEND_DIR"
-
-# Check if node_modules exists
-if [ ! -d "node_modules" ]; then
-    echo "   📦 Installing frontend dependencies (first time)..."
-    npm install > /dev/null 2>&1
-fi
-
-npx vite --host 0.0.0.0 --port 5173 > "$FRONTEND_LOG" 2>&1 &
-FRONTEND_PID=$!
-echo "   PID: $FRONTEND_PID"
-echo "   Log: $FRONTEND_LOG"
-
-# Wait for Vite to start
-sleep 3
-echo "   ✅ Frontend is starting!"
-echo ""
-
 # --- Step 3: Start the Gateway ---
 echo "📡 Starting LoRa Gateway..."
 echo "   Log: $GATEWAY_LOG"
 echo ""
 echo "========================================="
-echo "  All services running!"
-echo "  Backend PID:   $BACKEND_PID"
-echo "  Frontend PID:  $FRONTEND_PID"
-echo "  Dashboard:     http://$PI_IP:5173"
-echo "  API:           http://$PI_IP:5050/api/bins"
+echo "  ✅ All services running!"
+echo ""
+echo "  Dashboard:  http://$PI_IP:5050"
+echo "  API:        http://$PI_IP:5050/api/bins"
+echo ""
+echo "  Backend PID: $BACKEND_PID"
 echo "========================================="
 echo ""
 echo "  📡 Gateway output below (Ctrl+C to stop all):"
@@ -114,7 +121,6 @@ cleanup() {
     echo ""
     echo "🛑 Shutting down..."
     kill $BACKEND_PID 2>/dev/null && echo "   ✅ Backend stopped"
-    kill $FRONTEND_PID 2>/dev/null && echo "   ✅ Frontend stopped"
     echo "   Logs saved in: $LOG_DIR/"
     exit 0
 }

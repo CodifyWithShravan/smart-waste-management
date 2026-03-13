@@ -4,8 +4,8 @@ import DustbinCard from "./components/DustbinCard";
 import MapView from "./components/MapView";
 import axios from "axios";
 
-// Dynamically use the current hostname so the dashboard works from any device
-const API_URL = `http://${window.location.hostname}:5050/api/bins`;
+// Relative URL — frontend is served from the same Express server
+const API_URL = "/api/bins";
 
 function App() {
 

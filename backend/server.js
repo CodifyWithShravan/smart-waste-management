@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -125,8 +126,23 @@ app.delete('/api/bins/:binId', async (req, res) => {
 });
 
 // ============================================================
+//  Serve Frontend Dashboard (built React app)
+// ============================================================
+
+const frontendPath = path.join(__dirname, '..', 'frontend', 'dist');
+app.use(express.static(frontendPath));
+
+// Catch-all: serve index.html for any non-API route (React SPA routing)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+// ============================================================
 //  Start Server
 // ============================================================
 
 const PORT = process.env.PORT || 5050;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT} (all interfaces)`));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT} (all interfaces)`);
+  console.log(`🌐 Dashboard: http://localhost:${PORT}`);
+});
