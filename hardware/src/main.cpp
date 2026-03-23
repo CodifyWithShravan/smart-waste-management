@@ -40,15 +40,15 @@
 // ============================================================
 
 // Unique ID for this bin (change for each physical bin)
-#define BIN_ID          "BIN-003"
+#define BIN_ID          "BIN-001"
 
 // Ultrasonic Sensor Pins (AJ-SR04)
 #define TRIG_PIN        5
 #define ECHO_PIN        18
 
 // Bin physical dimensions (in centimeters)
-// AJ-SR04 effective range up to ~300 cm
-#define BIN_DEPTH_CM    300.0
+// 2.5 feet = ~76 cm
+#define BIN_DEPTH_CM    200.0
 
 // GPS Serial (NEO-6M on Serial1)
 #define GPS_RX_PIN      16   // ESP32 RX1 ← GPS TX
@@ -105,16 +105,22 @@ float measureDistanceCM() {
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
 
-  // Read the echo pulse duration (timeout after 30ms = ~500cm max)
-  long duration = pulseIn(ECHO_PIN, HIGH, 30000);
+  // Read the echo pulse duration (timeout after 50ms = ~850cm max)
+  long duration = pulseIn(ECHO_PIN, HIGH, 50000);
 
   if (duration == 0) {
+    Serial.println("   ⚠️  No echo (duration=0) — check TRIG/ECHO wiring");
     return -1.0;  // No echo received
   }
 
   // Speed of sound = 343 m/s = 0.0343 cm/µs
   // Distance = (duration * 0.0343) / 2 (round trip)
   float distance = (duration * 0.0343) / 2.0;
+  Serial.print("   Raw: duration=");
+  Serial.print(duration);
+  Serial.print("µs → ");
+  Serial.print(distance, 1);
+  Serial.println(" cm");
   return distance;
 }
 
@@ -126,14 +132,20 @@ float getAverageDistance() {
   float total = 0;
   int   validReadings = 0;
 
+  Serial.println("   Taking 5 sensor readings:");
   for (int i = 0; i < NUM_READINGS; i++) {
     float d = measureDistanceCM();
     if (d > 0) {
       total += d;
       validReadings++;
     }
-    delay(50);  // Small delay between readings
+    delay(60);  // Small delay between readings
   }
+
+  Serial.print("   Valid readings: ");
+  Serial.print(validReadings);
+  Serial.print("/");
+  Serial.println(NUM_READINGS);
 
   if (validReadings == 0) {
     return -1.0;  // Sensor error

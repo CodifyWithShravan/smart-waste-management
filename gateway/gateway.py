@@ -32,6 +32,7 @@ import requests
 import time
 import sys
 import os
+import csv
 from datetime import datetime
 from collections import OrderedDict
 
@@ -40,6 +41,41 @@ try:
     sys.stdout.reconfigure(line_buffering=True)
 except AttributeError:
     pass  # Python < 3.7 fallback — use PYTHONUNBUFFERED=1 env var instead
+
+# ============================================================
+#  LOCAL CSV DATA LOGGING
+# ============================================================
+
+# Directory for CSV log files (relative to this script)
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+
+
+def log_to_csv(data):
+    """
+    Appends a sensor reading to a daily CSV file.
+    Creates the logs/ directory and CSV header automatically.
+    File: logs/readings_YYYY-MM-DD.csv
+    """
+    os.makedirs(LOG_DIR, exist_ok=True)
+
+    filename = f"readings_{datetime.now().strftime('%Y-%m-%d')}.csv"
+    filepath = os.path.join(LOG_DIR, filename)
+
+    file_exists = os.path.isfile(filepath)
+
+    with open(filepath, "a", newline="") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["timestamp", "binId", "fillLevel", "latitude", "longitude", "rssi", "snr"])
+        writer.writerow([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            data.get("binId", ""),
+            data.get("fillLevel", ""),
+            data.get("latitude", ""),
+            data.get("longitude", ""),
+            data.get("rssi", ""),
+            data.get("snr", ""),
+        ])
 
 # ============================================================
 #  CONFIGURATION — Change these to match your setup
@@ -335,6 +371,9 @@ def main():
                     if data:
                         # Update the multi-bin status tracker
                         update_bin_status(data)
+
+                        # Log reading to local CSV file
+                        log_to_csv(data)
 
                         # Log signal quality if available
                         if "rssi" in data:

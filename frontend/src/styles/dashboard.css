@@ -11,8 +11,39 @@ body {
 
 .title {
   font-size: 32px;
-  margin-bottom: 30px;
+  margin-bottom: 16px;
   color: #2c3e50;
+}
+
+/* Tab Navigation */
+.tab-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.tab-btn {
+  padding: 10px 24px;
+  border: 2px solid #ddd;
+  background: white;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #555;
+}
+
+.tab-btn:hover {
+  border-color: #3498db;
+  color: #3498db;
+}
+
+.tab-btn.active {
+  background: #3498db;
+  border-color: #3498db;
+  color: white;
 }
 
 .bin-container {

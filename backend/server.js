@@ -30,6 +30,17 @@ const binSchema = new mongoose.Schema({
 
 const Bin = mongoose.model('Bin', binSchema);
 
+// Historical readings — stores EVERY sensor reading for future analysis
+const readingSchema = new mongoose.Schema({
+  binId: { type: String, required: true, index: true },
+  fillLevel: { type: Number, required: true, min: 0, max: 100 },
+  latitude: { type: Number, required: true },
+  longitude: { type: Number, required: true },
+  timestamp: { type: Date, default: Date.now, index: true }
+});
+
+const Reading = mongoose.model('Reading', readingSchema);
+
 // ============================================================
 //  API Routes
 // ============================================================
@@ -76,6 +87,9 @@ app.post('/api/bins/update', async (req, res) => {
       { upsert: true, returnDocument: 'after' }  // Creates it if it doesn't exist
     );
 
+    // Save historical reading for future analysis
+    await Reading.create({ binId, fillLevel, latitude, longitude });
+
     console.log(`📥 Received update for ${binId}: ${fillLevel}% full`);
     res.status(200).json({ message: 'Success', data: updatedBin });
   } catch (error) {
@@ -120,6 +134,66 @@ app.delete('/api/bins/:binId', async (req, res) => {
 
     console.log(`🗑️  Deleted bin: ${req.params.binId}`);
     res.status(200).json({ message: 'Bin deleted', data: result });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+});
+
+// ============================================================
+//  Reading History API — For data analysis & export
+// ============================================================
+
+// GET /api/readings — Fetches historical readings with optional filters
+app.get('/api/readings', async (req, res) => {
+  try {
+    const { binId, limit = 200, from, to } = req.query;
+    const filter = {};
+
+    if (binId) filter.binId = binId;
+    if (from || to) {
+      filter.timestamp = {};
+      if (from) filter.timestamp.$gte = new Date(from);
+      if (to) filter.timestamp.$lte = new Date(to);
+    }
+
+    const readings = await Reading.find(filter)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit))
+      .lean();
+
+    res.status(200).json(readings);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+});
+
+// GET /api/readings/export — Download all readings as CSV
+app.get('/api/readings/export', async (req, res) => {
+  try {
+    const { binId, from, to } = req.query;
+    const filter = {};
+
+    if (binId) filter.binId = binId;
+    if (from || to) {
+      filter.timestamp = {};
+      if (from) filter.timestamp.$gte = new Date(from);
+      if (to) filter.timestamp.$lte = new Date(to);
+    }
+
+    const readings = await Reading.find(filter)
+      .sort({ timestamp: -1 })
+      .lean();
+
+    // Build CSV
+    let csv = 'Timestamp,Bin ID,Fill Level (%),Latitude,Longitude\n';
+    for (const r of readings) {
+      const ts = new Date(r.timestamp).toISOString();
+      csv += `${ts},${r.binId},${r.fillLevel},${r.latitude},${r.longitude}\n`;
+    }
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=readings_export.csv');
+    res.status(200).send(csv);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }

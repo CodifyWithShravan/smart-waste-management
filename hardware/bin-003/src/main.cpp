@@ -49,7 +49,7 @@
 
 // Bin physical dimensions (in centimeters)
 // AJ-SR04 effective range up to ~300 cm
-#define BIN_DEPTH_CM    300.0
+#define BIN_DEPTH_CM    76.0
 
 // GPS Serial (NEO-6M on Serial1)
 #define GPS_RX_PIN      16   // ESP32 RX1 ← GPS TX
