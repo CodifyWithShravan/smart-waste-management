@@ -26,9 +26,15 @@ LOG_DIR="$PROJECT_DIR/logs"
 # Create logs directory
 mkdir -p "$LOG_DIR"
 
-TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-BACKEND_LOG="$LOG_DIR/backend_$TIMESTAMP.log"
-GATEWAY_LOG="$LOG_DIR/gateway_$TIMESTAMP.log"
+DATE_TODAY=$(date +"%Y-%m-%d")
+BACKEND_LOG="$LOG_DIR/backend_$DATE_TODAY.log"
+GATEWAY_LOG="$LOG_DIR/gateway_$DATE_TODAY.log"
+
+# Add a separator so you can tell when a new session started
+echo "" >> "$BACKEND_LOG"
+echo "=== Session started at $(date +"%Y-%m-%d %H:%M:%S") ===" >> "$BACKEND_LOG"
+echo "" >> "$GATEWAY_LOG"
+echo "=== Session started at $(date +"%Y-%m-%d %H:%M:%S") ===" >> "$GATEWAY_LOG"
 
 # Get the Pi's LAN IP address
 PI_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
@@ -72,7 +78,7 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-node server.js > "$BACKEND_LOG" 2>&1 &
+node server.js >> "$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 echo "   PID: $BACKEND_PID"
 echo "   Log: $BACKEND_LOG"
